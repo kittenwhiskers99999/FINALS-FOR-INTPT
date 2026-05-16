@@ -1,0 +1,128 @@
+-- ============================================
+-- STEP 1: Create Database & Core Tables
+-- Run this first before anything else
+-- ============================================
+
+CREATE DATABASE IF NOT EXISTS spotifind;
+USE spotifind;
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    username       VARCHAR(50) NOT NULL UNIQUE,
+    password       VARCHAR(255) NOT NULL,
+    email          VARCHAR(100) NOT NULL UNIQUE,
+    contact_number VARCHAR(20),
+    location       VARCHAR(100),
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Lost items table
+CREATE TABLE IF NOT EXISTS lost_items (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT,
+    type        VARCHAR(100) NOT NULL,
+    details     VARCHAR(100),
+    location    VARCHAR(100),
+    image       VARCHAR(255) DEFAULT NULL,
+    status      ENUM('active', 'claimed', 'deleted') DEFAULT 'active',
+    reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    claimed_at  TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Found items table
+CREATE TABLE IF NOT EXISTS found_items (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    user_id     INT,
+    type        VARCHAR(100) NOT NULL,
+    details     VARCHAR(100),
+    location    VARCHAR(100),
+    image       VARCHAR(255) DEFAULT NULL,
+    status      ENUM('active', 'claimed', 'deleted') DEFAULT 'active',
+    reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    claimed_at  TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Item photos table (multiple photos per item)
+CREATE TABLE IF NOT EXISTS item_photos (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    item_id     INT NOT NULL,
+    item_type   ENUM('lost', 'found') NOT NULL,
+    filename    VARCHAR(255) NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages table (chat system)
+CREATE TABLE IF NOT EXISTS messages (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    item_id     INT NOT NULL,
+    item_type   ENUM('lost', 'found') NOT NULL,
+    sender_id   INT NOT NULL,
+    receiver_id INT NOT NULL,
+    message     TEXT NOT NULL,
+    image       VARCHAR(255) DEFAULT NULL,
+    message_type ENUM('text', 'image') DEFAULT 'text',
+    is_read     TINYINT(1) DEFAULT 0,
+    sent_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Reports/flags table
+CREATE TABLE IF NOT EXISTS reports (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    reporter_id INT,
+    item_id     INT NOT NULL,
+    item_type   ENUM('lost', 'found') NOT NULL,
+    reason      VARCHAR(255) NOT NULL,
+    details     TEXT,
+    status      ENUM('pending', 'reviewed', 'dismissed') DEFAULT 'pending',
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Admin users table
+CREATE TABLE IF NOT EXISTS admin_users (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    username   VARCHAR(50) NOT NULL UNIQUE,
+    password   VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Default admin account (username: admin, password: admin123)
+INSERT INTO admin_users (username, password)
+VALUES ('admin', 'scrypt:32768:8:1$ll9Vq8hluwME0TQr$917d93226bbf198744404d1cd9a5184f4d8983411c81b145003a9a1fb03477d644ced354b68ad19f0daaf9df7de883e8475389c67fe98e692f3f0d56b1cb86d9');
+
+-- ============================================
+-- STEP 2: Fixes & Column Updates
+-- Run this ONLY if you already ran Step 1
+-- and need to update an existing database
+-- ============================================
+
+USE spotifind;
+
+-- Rename color to details (if you have old data)
+ALTER TABLE lost_items CHANGE color details VARCHAR(100);
+ALTER TABLE found_items CHANGE color details VARCHAR(100);
+
+-- Add image column (if missing)
+ALTER TABLE lost_items ADD COLUMN IF NOT EXISTS image VARCHAR(255) DEFAULT NULL;
+ALTER TABLE found_items ADD COLUMN IF NOT EXISTS image VARCHAR(255) DEFAULT NULL;
+
+-- Add status column (if missing)
+ALTER TABLE lost_items ADD COLUMN IF NOT EXISTS status ENUM('active','claimed','deleted') DEFAULT 'active';
+ALTER TABLE found_items ADD COLUMN IF NOT EXISTS status ENUM('active','claimed','deleted') DEFAULT 'active';
+
+-- Set existing rows to active (if status was NULL)
+UPDATE lost_items SET status = 'active' WHERE status IS NULL;
+UPDATE found_items SET status = 'active' WHERE status IS NULL;
+
+-- Add claimed_at column (if missing)
+ALTER TABLE lost_items ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE found_items ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMP NULL DEFAULT NULL;
+
+-- Add message image columns (if missing)
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS image VARCHAR(255) DEFAULT NULL;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type ENUM('text','image') DEFAULT 'text';
