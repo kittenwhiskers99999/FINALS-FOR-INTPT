@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block hero %}
+    <p class="logo-name">Lost something?</p>
+    <p class="logo-name">Found something?</p>
+    <p class="logo-name">Join SpotIfind!</p>
+    <p class="logo-tagline">Sign in to report lost or found items and help your community.</p>
+{% endblock %}
+
+{% block content %}
+    <form method="post">
+        <input type="text" name="username" placeholder="Username" required autocomplete="username">
+        <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
+        <button type="submit">Log in</button>
+    </form>
+    <p class="small-text">Don't have an account? <a href="/register">Sign up</a></p>
+{% endblock %}

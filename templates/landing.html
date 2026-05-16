@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotIfind – Find What Matters</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+    <a href="/" class="logo"><img src="{{ url_for('static', filename='assets/logo.png') }}" alt="SpotIfind logo">SpotIfind</a>
+
+    <nav class="nav-links">
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+
+    <div class="auth">
+        <a href="/login" class="tab login">Login</a>
+    </div>
+</header>
+
+<!-- HERO -->
+<main class="container">
+    <div class="hero">
+        <h1>Welcome to SpotIfind</h1>
+        <p>Find lost items or report found items in your school or community.</p>
+
+        <div class="buttons">
+            <a href="/lost" class="big-btn">Lost Items</a>
+            <a href="/found" class="big-btn">Found Items</a>
+            <a href="/about" class="big-btn">About</a>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

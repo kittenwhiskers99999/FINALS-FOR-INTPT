@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block hero %}
+    <p class="logo-name">Lost something?</p>
+    <p class="logo-name">Found something?</p>
+    <p class="logo-name">Join SpotIfind!</p>
+    <p class="logo-tagline">Create your account and start helping your community recover what matters.</p>
+{% endblock %}
+
+{% block content %}
+    <form method="post">
+        <input type="text" name="username" placeholder="Username" required autocomplete="username">
+        <input type="email" name="email" placeholder="Email address" required autocomplete="email">
+        <input type="text" name="contact_number" placeholder="Contact number" required>
+        <input type="text" name="location" placeholder="Location (e.g. Makati, Manila)" required>
+        <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
+        <input type="password" name="confirm_password" placeholder="Confirm password" required autocomplete="new-password">
+        <button type="submit">Sign up</button>
+    </form>
+    <p class="small-text">Already have an account? <a href="/login">Log in</a></p>
+{% endblock %}

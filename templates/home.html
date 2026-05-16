@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind
+    </a>
+    <nav class="nav-links">
+        <a href="/lost" class="tab {% if active == 'lost' %}active{% endif %}">Lost Items</a>
+        <a href="/found" class="tab {% if active == 'found' %}active{% endif %}">Found Items</a>
+        <a href="/inbox" class="tab">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+    <!-- SEARCH -->
+    <div class="nav-search">
+        <form action="/search" method="get" autocomplete="off" class="nav-search-form">
+            <div class="nav-search-wrap">
+                <input type="text" name="q" id="navSearchInput" placeholder="Search items..."
+                       class="nav-search-input">
+                <button type="submit" class="nav-search-btn">&#128269;</button>
+                <div class="search-suggestions" id="navSearchSuggestions"></div>
+            </div>
+        </form>
+    </div>
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/profile" class="tab">Profile</a>
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- LOST ITEMS FEED -->
+    <section id="lost" class="feed {% if active == 'lost' or active == 'all' %}active{% endif %}">
+        <div class="feed-header">
+            <h1>Lost Items</h1>
+            <a href="/report-lost" class="btn-report">+ Report Lost Item</a>
+        </div>
+        <div class="grid">
+            {% for item in lost_items %}
+            <div class="card"
+                data-id="{{ item.id }}"
+                data-type="lost"
+                data-item-type="{{ item.type }}"
+                data-details="{{ item.details }}"
+                data-location="{{ item.location }}"
+                data-photos='{{ item.photos | tojson }}'
+                data-reporter="{{ item.reporter_name }}"
+                data-owner="{{ 'true' if item.user_id == current_user_id else 'false' }}"
+                onclick="openModal(this)">
+                {% if item.image %}
+                <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="card-img" alt="{{ item.type }}">
+                {% else %}
+                <div class="card-no-img">No Photo</div>
+                {% endif %}
+                <div class="card-body">
+                    <h2>{{ item.type }}</h2>
+                    <p class="card-location">&#128205; {{ item.location }}</p>
+                    <p class="card-details">{{ item.details[:60] }}{% if item.details|length > 60 %}...{% endif %}</p>
+                </div>
+                {% if item.user_id == current_user_id %}
+                <div class="card-owner-actions" onclick="event.stopPropagation()">
+                    <form method="post" action="/claim/lost_items/{{ item.id }}">
+                        <button type="submit" class="btn-claim">&#10003; Claimed</button>
+                    </form>
+                    <form method="post" action="/delete/lost_items/{{ item.id }}" onsubmit="return confirm('Delete this report?')">
+                        <button type="submit" class="btn-delete">&#128465;</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="empty-msg">No lost items reported yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- FOUND ITEMS FEED -->
+    <section id="found" class="feed {% if active == 'found' %}active{% endif %}">
+        <div class="feed-header">
+            <h1>Found Items</h1>
+            <a href="/report-found" class="btn-report">+ Report Found Item</a>
+        </div>
+        <div class="grid">
+            {% for item in found_items %}
+            <div class="card"
+                data-id="{{ item.id }}"
+                data-type="found"
+                data-item-type="{{ item.type }}"
+                data-details="{{ item.details }}"
+                data-location="{{ item.location }}"
+                data-photos='{{ item.photos | tojson }}'
+                data-reporter="{{ item.reporter_name }}"
+                data-owner="{{ 'true' if item.user_id == current_user_id else 'false' }}"
+                onclick="openModal(this)">
+                {% if item.image %}
+                <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="card-img" alt="{{ item.type }}">
+                {% else %}
+                <div class="card-no-img">No Photo</div>
+                {% endif %}
+                <div class="card-body">
+                    <h2>{{ item.type }}</h2>
+                    <p class="card-location">&#128205; {{ item.location }}</p>
+                    <p class="card-details">{{ item.details[:60] }}{% if item.details|length > 60 %}...{% endif %}</p>
+                </div>
+                {% if item.user_id == current_user_id %}
+                <div class="card-owner-actions" onclick="event.stopPropagation()">
+                    <form method="post" action="/claim/found_items/{{ item.id }}">
+                        <button type="submit" class="btn-claim">&#10003; Claimed</button>
+                    </form>
+                    <form method="post" action="/delete/found_items/{{ item.id }}" onsubmit="return confirm('Delete this report?')">
+                        <button type="submit" class="btn-delete">&#128465;</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <p class="empty-msg">No found items reported yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+</main>
+
+<!-- ITEM DETAIL MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal()"></div>
+<div class="modal-sheet" id="modalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-content">
+
+        <!-- LEFT: photo carousel -->
+        <div class="modal-carousel" id="modalCarousel">
+            <div class="carousel-track" id="carouselTrack"></div>
+            <button class="carousel-btn carousel-prev" id="carouselPrev" onclick="slideCarousel(-1)">&#8249;</button>
+            <button class="carousel-btn carousel-next" id="carouselNext" onclick="slideCarousel(1)">&#8250;</button>
+            <div class="carousel-dots" id="carouselDots"></div>
+        </div>
+
+        <!-- RIGHT: info -->
+        <div class="modal-info">
+            <div class="modal-top">
+                <span class="modal-badge" id="modalBadge"></span>
+                <button class="modal-close" onclick="closeModal()">&#10005;</button>
+            </div>
+
+            <h2 class="modal-title" id="modalTitle"></h2>
+
+            <div class="modal-meta">
+                <div class="meta-row">
+                    <span class="meta-label">&#128205; Location</span>
+                    <span id="modalLocation"></span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">&#128065; Details</span>
+                    <span id="modalDetails"></span>
+                </div>
+            </div>
+
+            <div class="modal-reporter">
+                <div class="reporter-avatar" id="reporterAvatar"></div>
+                <div>
+                    <p class="reporter-label">Reported by</p>
+                    <p class="reporter-name" id="reporterName"></p>
+                </div>
+            </div>
+
+            <div class="modal-actions" id="modalActions"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let currentSlide = 0;
+let totalSlides = 0;
+
+function openModal(card) {
+    const id       = card.dataset.id;
+    const type     = card.dataset.type;
+    const itemType = card.dataset.itemType;
+    const details  = card.dataset.details;
+    const location = card.dataset.location;
+    const reporter = card.dataset.reporter;
+    const isOwner  = card.dataset.owner === 'true';
+    let photos = [];
+    try { photos = JSON.parse(card.dataset.photos); } catch(e) {}
+
+    // Badge
+    document.getElementById('modalBadge').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    document.getElementById('modalBadge').className = 'modal-badge badge-' + type;
+    document.getElementById('modalTitle').textContent = itemType;
+    document.getElementById('modalLocation').textContent = location;
+    document.getElementById('modalDetails').textContent = details;
+    document.getElementById('reporterName').textContent = reporter;
+    document.getElementById('reporterAvatar').textContent = reporter.charAt(0).toUpperCase();
+
+    // Build carousel
+    buildCarousel(photos);
+
+    // Actions
+    const table = type + '_items';
+    const actions = document.getElementById('modalActions');
+    if (isOwner) {
+        actions.innerHTML = `
+            <form method="post" action="/claim/${table}/${id}" style="flex:1">
+                <button type="submit" class="btn-claim" style="width:100%">&#10003; Mark as Claimed</button>
+            </form>
+            <form method="post" action="/delete/${table}/${id}" onsubmit="return confirm('Delete this report?')" style="flex:1">
+                <button type="submit" class="btn-delete" style="width:100%">&#128465; Delete</button>
+            </form>`;
+    } else {
+        actions.innerHTML = `
+            <a href="/chat/${type}/${id}" class="btn-contact" style="flex:1;display:block;text-align:center">&#128172; Contact Reporter</a>
+            <button onclick="openReportModal(${id},'${type}')" class="btn-flag">&#9873; Report</button>`;
+    }
+
+    document.getElementById('modalBackdrop').classList.add('active');
+    document.getElementById('modalSheet').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function buildCarousel(photos) {
+    const track = document.getElementById('carouselTrack');
+    const dots  = document.getElementById('carouselDots');
+    const prev  = document.getElementById('carouselPrev');
+    const next  = document.getElementById('carouselNext');
+    currentSlide = 0;
+    totalSlides = photos.length;
+
+    if (!photos.length) {
+        track.innerHTML = '<div class="carousel-slide modal-no-img">No Photo Available</div>';
+        dots.innerHTML = '';
+        prev.style.display = 'none';
+        next.style.display = 'none';
+        return;
+    }
+
+    track.innerHTML = photos.map(p =>
+        `<div class="carousel-slide"><img src="/static/uploads/${p}" alt="photo"></div>`
+    ).join('');
+
+    dots.innerHTML = photos.map((_, i) =>
+        `<span class="carousel-dot ${i === 0 ? 'dot-active' : ''}" onclick="goToSlide(${i})"></span>`
+    ).join('');
+
+    prev.style.display = photos.length > 1 ? 'flex' : 'none';
+    next.style.display = photos.length > 1 ? 'flex' : 'none';
+    updateCarousel();
+}
+
+function updateCarousel() {
+    document.getElementById('carouselTrack').style.transform = `translateX(-${currentSlide * 100}%)`;
+    document.querySelectorAll('.carousel-dot').forEach((d, i) => {
+        d.classList.toggle('dot-active', i === currentSlide);
+    });
+}
+
+function slideCarousel(dir) {
+    currentSlide = (currentSlide + dir + totalSlides) % totalSlides;
+    updateCarousel();
+}
+
+function goToSlide(index) {
+    currentSlide = index;
+    updateCarousel();
+}
+
+function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('active');
+    document.getElementById('modalSheet').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'ArrowLeft') slideCarousel(-1);
+    if (e.key === 'ArrowRight') slideCarousel(1);
+});
+</script>
+
+
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="admin-modal-backdrop" id="adminModalBackdrop" onclick="closeAdminModal()"></div>
+<div class="admin-modal" id="adminModal">
+    <div class="admin-modal-header">
+        <h3>Admin Login</h3>
+        <button onclick="closeAdminModal()" class="admin-modal-close">&#10005;</button>
+    </div>
+    <div id="adminModalMsg"></div>
+    <input type="text" id="adminUser" placeholder="Admin username" class="admin-modal-input">
+    <input type="password" id="adminPass" placeholder="Password" class="admin-modal-input">
+    <button onclick="submitAdminLogin()" class="admin-modal-btn">Login</button>
+</div>
+
+<script>
+document.querySelector('.logo').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('adminModalBackdrop').classList.add('active');
+    document.getElementById('adminModal').classList.add('active');
+    document.getElementById('adminUser').focus();
+});
+
+function closeAdminModal() {
+    document.getElementById('adminModalBackdrop').classList.remove('active');
+    document.getElementById('adminModal').classList.remove('active');
+    document.getElementById('adminModalMsg').innerHTML = '';
+    document.getElementById('adminUser').value = '';
+    document.getElementById('adminPass').value = '';
+}
+
+function submitAdminLogin() {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value.trim();
+    const msg = document.getElementById('adminModalMsg');
+
+    if (!username || !password) {
+        msg.innerHTML = '<p class="admin-modal-error">Please enter both fields.</p>';
+        return;
+    }
+
+    const btn = document.querySelector('.admin-modal-btn');
+    btn.textContent = 'Logging in...';
+    btn.disabled = true;
+
+    fetch('/admin/login-ajax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/admin';
+        } else {
+            msg.innerHTML = '<p class="admin-modal-error">' + data.message + '</p>';
+            btn.textContent = 'Login';
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        msg.innerHTML = '<p class="admin-modal-error">Something went wrong.</p>';
+        btn.textContent = 'Login';
+        btn.disabled = false;
+    });
+}
+
+// Submit on Enter key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('adminModal').classList.contains('active')) {
+        submitAdminLogin();
+    }
+});
+</script>
+
+
+<!-- REPORT/FLAG MODAL -->
+<div class="admin-modal-backdrop" id="reportModalBackdrop" onclick="closeReportModal()"></div>
+<div class="admin-modal" id="reportModal">
+    <div class="admin-modal-header">
+        <h3>&#9873; Report Post</h3>
+        <button onclick="closeReportModal()" class="admin-modal-close">&#10005;</button>
+    </div>
+    <div id="reportModalMsg"></div>
+    <input type="hidden" id="reportItemId">
+    <input type="hidden" id="reportItemType">
+    <select id="reportReason" class="admin-modal-input" style="margin-top:10px">
+        <option value="">Select a reason...</option>
+        <option value="Inappropriate content">Inappropriate content</option>
+        <option value="Spam or fake post">Spam or fake post</option>
+        <option value="Misleading information">Misleading information</option>
+        <option value="Offensive language">Offensive language</option>
+        <option value="Other">Other</option>
+    </select>
+    <textarea id="reportDetails" class="admin-modal-input"
+              placeholder="Additional details (optional)" rows="3"
+              style="margin-top:10px;resize:vertical;padding:10px 12px;border-radius:8px;border:1.5px solid #d1d5db;font-family:inherit;font-size:14px;width:100%;"></textarea>
+    <button onclick="submitReport()" class="admin-modal-btn">Submit Report</button>
+</div>
+
+<script>
+function openReportModal(itemId, itemType) {
+    document.getElementById('reportItemId').value = itemId;
+    document.getElementById('reportItemType').value = itemType;
+    document.getElementById('reportModalMsg').innerHTML = '';
+    document.getElementById('reportReason').value = '';
+    document.getElementById('reportDetails').value = '';
+    document.getElementById('reportModalBackdrop').classList.add('active');
+    document.getElementById('reportModal').classList.add('active');
+}
+
+function closeReportModal() {
+    document.getElementById('reportModalBackdrop').classList.remove('active');
+    document.getElementById('reportModal').classList.remove('active');
+}
+
+function submitReport() {
+    const item_id   = document.getElementById('reportItemId').value;
+    const item_type = document.getElementById('reportItemType').value;
+    const reason    = document.getElementById('reportReason').value;
+    const details   = document.getElementById('reportDetails').value;
+    const msg       = document.getElementById('reportModalMsg');
+    const btn       = document.querySelector('#reportModal .admin-modal-btn');
+
+    if (!reason) { msg.innerHTML = '<p class="admin-modal-error">Please select a reason.</p>'; return; }
+
+    btn.textContent = 'Submitting...';
+    btn.disabled = true;
+
+    const form = new FormData();
+    form.append('item_id', item_id);
+    form.append('item_type', item_type);
+    form.append('reason', reason);
+    form.append('details', details);
+
+    fetch('/report-post', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            msg.innerHTML = '<p style="color:#166534;background:#f0fdf4;padding:8px 12px;border-radius:6px;font-size:13px;margin-top:8px;">&#10003; ' + data.message + '</p>';
+            setTimeout(closeReportModal, 1500);
+        } else {
+            msg.innerHTML = '<p class="admin-modal-error">' + data.message + '</p>';
+        }
+        btn.textContent = 'Submit Report';
+        btn.disabled = false;
+    });
+}
+</script>
+
+</body>
+</html>

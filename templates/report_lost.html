@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Lost Item – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind
+    </a>
+    <nav class="nav-links">
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/inbox" class="tab">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+</header>
+
+<!-- FORM PAGE -->
+<main class="container">
+    <div class="report-wrapper">
+
+        <div class="report-header">
+            <h1>Report a Lost Item</h1>
+            <p>Fill in the details below so others can help you find it.</p>
+        </div>
+
+        {% if success %}
+            <div class="alert-success">
+                ✅ {{ success }}
+                <a href="/lost">View Lost Items</a>
+            </div>
+        {% endif %}
+
+        {% if message %}
+            <div class="alert-error">⚠️ {{ message }}</div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" class="report-form" id="reportForm">
+
+            <div class="form-group">
+                <label>Item Type</label>
+                <input type="text" name="type" placeholder="e.g. Phone, Wallet, Keys, Bag" required>
+            </div>
+
+            <div class="form-group">
+                <label>Details</label>
+                <textarea name="details" rows="4" placeholder="e.g. Brand, size, color, distinguishing marks, contents..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Last Seen Location</label>
+                <input type="text" name="location" placeholder="e.g. Library, Room 204, Near school gate" required>
+            </div>
+
+<div class="form-group">
+                <label>Photo <span class="optional">(optional)</span></label>
+                <input type="file" name="images" accept="image/*" class="file-input" multiple>
+                <p class="file-hint">JPG, PNG, GIF or WEBP. You can select multiple photos.</p>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-submit">Submit Report</button>
+                <a href="/home" class="btn-cancel">Cancel</a>
+            </div>
+
+        </form>
+    </div>
+</main>
+
+<script>
+const form = document.getElementById('reportForm');
+if (form) {
+    form.addEventListener('submit', function() {
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+    });
+}
+</script>
+</body>
+</html>

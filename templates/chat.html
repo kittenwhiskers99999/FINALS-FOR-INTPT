@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind
+    </a>
+    <nav class="nav-links">
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/inbox" class="tab">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container">
+    <div class="chat-wrapper">
+
+        <!-- ITEM SUMMARY -->
+        <div class="chat-item-summary">
+            {% if item.image %}
+            <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="chat-item-img" alt="{{ item.type }}">
+            {% else %}
+            <div class="chat-item-img-placeholder">No Photo</div>
+            {% endif %}
+            <div class="chat-item-info">
+                <span class="chat-item-badge {% if item_type == 'lost' %}badge-lost{% else %}badge-found{% endif %}">
+                    {{ item_type | capitalize }}
+                </span>
+                <h2>{{ item.type }}</h2>
+                <p>{{ item.color }} &middot; {{ item.location }}</p>
+                <small>Posted by <strong>{{ item.reporter_name }}</strong></small>
+            </div>
+        </div>
+
+        <div class="chat-layout">
+
+            <!-- THREAD LIST (reporter only) -->
+            {% if is_reporter and threads %}
+            <div class="chat-threads">
+                <h3>Conversations</h3>
+                {% for thread in threads %}
+                <a href="{{ url_for('chat', item_type=item_type, item_id=item.id) }}?with={{ thread.id }}"
+                   class="thread-item {% if other_user and other_user.id == thread.id %}thread-active{% endif %}">
+                    <div class="thread-avatar">{{ thread.username[0] | upper }}</div>
+                    <span>{{ thread.username }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- CHAT WINDOW -->
+            <div class="chat-main">
+                {% if other_user %}
+
+                <div class="chat-header">
+                    <div class="thread-avatar">{{ other_user.username[0] | upper }}</div>
+                    <span>{{ other_user.username }}</span>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    {% if messages %}
+                        {% for msg in messages %}
+                        <div class="chat-bubble {% if msg.sender_id == current_user.id %}bubble-mine{% else %}bubble-theirs{% endif %}">
+                            {% if msg.message_type == 'image' and msg.image %}
+                                <img src="{{ url_for('static', filename='uploads/' + msg.image) }}" class="chat-photo" alt="photo">
+                                {% if msg.message %}<p>{{ msg.message }}</p>{% endif %}
+                            {% else %}
+                                <p>{{ msg.message }}</p>
+                            {% endif %}
+                            <small>{{ msg.sent_at.strftime('%b %d, %I:%M %p') }}</small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="chat-empty">No messages yet. Say hello!</p>
+                    {% endif %}
+                </div>
+
+                <!-- IMAGE PREVIEW -->
+                <div class="chat-preview" id="imagePreview" style="display:none;">
+                    <img id="previewImg" src="" alt="preview">
+                    <button type="button" class="preview-remove" onclick="removeImage()">&#10005;</button>
+                </div>
+
+                <!-- EMOJI PICKER -->
+                <div class="emoji-picker" id="emojiPicker" style="display:none;">
+                    <div class="emoji-search-wrap">
+                        <input type="text" id="emojiSearch" placeholder="Search emoji..." class="emoji-search" autocomplete="off">
+                    </div>
+                    <div class="emoji-grid" id="emojiGrid"></div>
+                </div>
+
+                <!-- CHAT FORM -->
+                <form method="post" action="{{ url_for('send_message', item_type=item_type, item_id=item.id) }}"
+                      class="chat-form" enctype="multipart/form-data" id="chatForm">
+                    <input type="hidden" name="receiver_id" value="{{ other_user.id }}">
+                    {% if is_reporter %}
+                    <input type="hidden" name="with_user_id" value="{{ other_user.id }}">
+                    {% endif %}
+                    <input type="file" name="chat_image" id="chatImageInput" accept="image/*" style="display:none;" onchange="previewImage(this)">
+
+                    <div class="chat-toolbar">
+                        <!-- Photo button -->
+                        <button type="button" class="chat-tool-btn" onclick="document.getElementById('chatImageInput').click()" title="Send photo">
+                            &#128247;
+                        </button>
+                        <!-- Emoji button -->
+                        <button type="button" class="chat-tool-btn" id="emojiToggleBtn" onclick="toggleEmojiPicker()" title="Emoji">
+                            &#128512;
+                        </button>
+                    </div>
+
+                    <input type="text" name="message" id="chatInput"
+                           placeholder="Type a message... or : for emoji"
+                           autocomplete="off" class="chat-input">
+                    <button type="submit" class="chat-send">Send</button>
+                </form>
+
+                {% elif is_reporter %}
+                <div class="chat-empty-state">
+                    <p>Select a conversation from the left to view messages.</p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<script>
+// =====================
+// AUTO SCROLL
+// =====================
+const chatBox = document.getElementById('chatMessages');
+if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+
+// =====================
+// IMAGE PREVIEW
+// =====================
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'flex';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function removeImage() {
+    document.getElementById('chatImageInput').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('previewImg').src = '';
+}
+
+// =====================
+// EMOJI PICKER
+// =====================
+const EMOJIS = [
+    '😀','😁','😂','🤣','😃','😄','😅','😆','😇','😈','😉','😊','😋','😌','😍','😎',
+    '😏','😐','😑','😒','😓','😔','😕','😖','😗','😘','😙','😚','😛','😜','😝','😞',
+    '😟','😠','😡','😢','😣','😤','😥','😦','😧','😨','😩','😪','😫','😬','😭','😮',
+    '😯','😰','😱','😲','😳','😴','😵','😶','😷','🤒','🤔','🤕','🤗','🤙','🤚','🤛',
+    '🤜','🤝','🤞','🤟','🤠','🤡','🤢','🤣','🤤','🤥','🤦','🤧','🤨','🤩','🤪','🤫',
+    '🤬','🤭','🤮','🤯','🥰','🥱','🥲','🥳','🥴','🥵','🥶','🥺','🦾','🧐','🧑','👀',
+    '👋','👌','👍','👎','👏','👐','👑','👒','👓','👔','👕','👖','👗','👘','👙','👚',
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','💕','💞','💓','💗','💖','💘',
+    '🎉','🎊','🎈','🎁','🎀','🎂','🎃','🎄','🎆','🎇','✨','⭐','🌟','💫','🔥','💥',
+    '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈',
+    '🍕','🍔','🍟','🌭','🍿','🧂','🥓','🥚','🍳','🧇','🥞','🧈','🍞','🥐','🥨','🧀',
+    '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🎱','🏓','🏸','🥊','🥋','⛳','🎯','🎮'
+];
+
+let emojiPickerOpen = false;
+
+function buildEmojiGrid(filter = '') {
+    const grid = document.getElementById('emojiGrid');
+    const filtered = filter ? EMOJIS.filter(e => {
+        const name = e.codePointAt(0).toString(16);
+        return name.includes(filter) || e.includes(filter);
+    }) : EMOJIS;
+    grid.innerHTML = filtered.map(e =>
+        `<button type="button" class="emoji-btn" onclick="insertEmoji('${e}')">${e}</button>`
+    ).join('');
+}
+
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emojiPicker');
+    emojiPickerOpen = !emojiPickerOpen;
+    picker.style.display = emojiPickerOpen ? 'block' : 'none';
+    if (emojiPickerOpen) {
+        buildEmojiGrid();
+        document.getElementById('emojiSearch').focus();
+    }
+}
+
+function insertEmoji(emoji) {
+    const input = document.getElementById('chatInput');
+    const pos = input.selectionStart;
+    input.value = input.value.slice(0, pos) + emoji + input.value.slice(pos);
+    input.selectionStart = input.selectionEnd = pos + emoji.length;
+    input.focus();
+}
+
+// Emoji search filter
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('emojiSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', e => buildEmojiGrid(e.target.value));
+    }
+
+    // : trigger in chat input
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('input', e => {
+            const val = e.target.value;
+            const colonIdx = val.lastIndexOf(':');
+            if (colonIdx !== -1 && colonIdx === val.length - 1) {
+                // Just typed a colon — open picker
+                document.getElementById('emojiPicker').style.display = 'block';
+                emojiPickerOpen = true;
+                buildEmojiGrid();
+                document.getElementById('emojiSearch').focus();
+            }
+        });
+    }
+
+    // Close picker when clicking outside
+    document.addEventListener('click', e => {
+        const picker = document.getElementById('emojiPicker');
+        const toggleBtn = document.getElementById('emojiToggleBtn');
+        const chatInput = document.getElementById('chatInput');
+        if (picker && !picker.contains(e.target) && e.target !== toggleBtn && e.target !== chatInput) {
+            picker.style.display = 'none';
+            emojiPickerOpen = false;
+        }
+    });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+</head>
+<body>
+
+<!-- BACKGROUND VIDEO -->
+<!-- dark overlay so text stays readable over the video -->
+<div class="video-overlay"></div>
+<video autoplay muted loop playsinline class="bg-video">
+    <source src="{{ url_for('static', filename='assets/bg.mp4') }}" type="video/mp4">
+</video>
+
+<!-- NAVBAR -->
+<header class="navbar">
+
+    <!-- LEFT: logo -->
+    <a href="/" class="logo"><img src="{{ url_for('static', filename='assets/logo.png') }}" alt="SpotIfind logo">SpotIfind</a>
+
+    <!-- CENTER: nav links -->
+    <nav class="nav-links">
+        <a href="/" class="tab">Home</a>
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/inbox" class="tab">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+
+    <!-- RIGHT: auth -->
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+
+</header>
+
+<!-- PAGE: two-column layout (hero left, card right) -->
+<div class="page">
+
+    <div class="hero">
+        {% block hero %}
+            <p class="logo-name">SpotIfind!</p>
+            <p class="logo-tagline">Report lost items, reconnect owners, and help your community recover what matters.</p>
+        {% endblock %}
+    </div>
+
+    <div class="panel">
+        <div class="card">
+
+            <h2>{{ title }}</h2>
+
+            {% if message %}
+                <p class="error">{{ message }}</p>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+
+        </div>
+    </div>
+
+</div>
+
+
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="admin-modal-backdrop" id="adminModalBackdrop" onclick="closeAdminModal()"></div>
+<div class="admin-modal" id="adminModal">
+    <div class="admin-modal-header">
+        <h3>Admin Login</h3>
+        <button onclick="closeAdminModal()" class="admin-modal-close">&#10005;</button>
+    </div>
+    <div id="adminModalMsg"></div>
+    <input type="text" id="adminUser" placeholder="Admin username" class="admin-modal-input">
+    <input type="password" id="adminPass" placeholder="Password" class="admin-modal-input">
+    <button onclick="submitAdminLogin()" class="admin-modal-btn">Login</button>
+</div>
+
+<script>
+document.querySelector('.logo').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('adminModalBackdrop').classList.add('active');
+    document.getElementById('adminModal').classList.add('active');
+    document.getElementById('adminUser').focus();
+});
+
+function closeAdminModal() {
+    document.getElementById('adminModalBackdrop').classList.remove('active');
+    document.getElementById('adminModal').classList.remove('active');
+    document.getElementById('adminModalMsg').innerHTML = '';
+    document.getElementById('adminUser').value = '';
+    document.getElementById('adminPass').value = '';
+}
+
+function submitAdminLogin() {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value.trim();
+    const msg = document.getElementById('adminModalMsg');
+
+    if (!username || !password) {
+        msg.innerHTML = '<p class="admin-modal-error">Please enter both fields.</p>';
+        return;
+    }
+
+    const btn = document.querySelector('.admin-modal-btn');
+    btn.textContent = 'Logging in...';
+    btn.disabled = true;
+
+    fetch('/admin/login-ajax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/admin';
+        } else {
+            msg.innerHTML = '<p class="admin-modal-error">' + data.message + '</p>';
+            btn.textContent = 'Login';
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        msg.innerHTML = '<p class="admin-modal-error">Something went wrong.</p>';
+        btn.textContent = 'Login';
+        btn.disabled = false;
+    });
+}
+
+// Submit on Enter key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('adminModal').classList.contains('active')) {
+        submitAdminLogin();
+    }
+});
+</script>
+
+</body>
+</html>

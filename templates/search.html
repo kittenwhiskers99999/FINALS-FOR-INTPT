@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind
+    </a>
+    <nav class="nav-links">
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/inbox" class="tab">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+    <!-- SEARCH -->
+    <div class="nav-search">
+        <form action="/search" method="get" autocomplete="off" class="nav-search-form">
+            <div class="nav-search-wrap">
+                <input type="text" name="q" id="navSearchInput" placeholder="Search items..."
+                       class="nav-search-input">
+                <button type="submit" class="nav-search-btn">&#128269;</button>
+                <div class="search-suggestions" id="navSearchSuggestions"></div>
+            </div>
+        </form>
+    </div>
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/profile" class="tab">Profile</a>
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container">
+    <div class="search-page-wrapper">
+
+        <!-- SEARCH BAR -->
+        <div class="search-page-bar">
+            <form action="/search" method="get" class="search-form" autocomplete="off">
+                <div class="search-input-wrap">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" name="q" id="searchInput" value="{{ query }}"
+                           placeholder="Search items, locations, users..."
+                           class="search-page-input" autofocus>
+                    <div class="search-suggestions" id="searchSuggestions"></div>
+                </div>
+                <button type="submit" class="search-submit-btn">Search</button>
+            </form>
+        </div>
+
+        {% if query %}
+        <h2 class="search-results-title">
+            Results for "<strong>{{ query }}</strong>"
+            <span class="results-count">{{ results|length }} item(s)</span>
+        </h2>
+
+        <!-- ITEM RESULTS -->
+        {% if results %}
+        <div class="grid">
+            {% for item in results %}
+            <div class="card"
+                data-id="{{ item.id }}"
+                data-type="{{ item.item_type }}"
+                data-item-type="{{ item.type }}"
+                data-details="{{ item.details }}"
+                data-location="{{ item.location }}"
+                data-photos='{{ item.photos | tojson }}'
+                data-reporter="{{ item.reporter_name }}"
+                data-owner="false"
+                onclick="openModal(this)">
+                {% if item.image %}
+                <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="card-img" alt="{{ item.type }}">
+                {% else %}
+                <div class="card-no-img">No Photo</div>
+                {% endif %}
+                <div class="card-body">
+                    <span class="item-status-badge status-{{ item.item_type }}">{{ item.item_type }}</span>
+                    <h2>{{ item.type }}</h2>
+                    <p class="card-location">&#128205; {{ item.location }}</p>
+                    <p class="card-details">{{ item.details[:60] }}{% if item.details|length > 60 %}...{% endif %}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-msg">No items found matching "{{ query }}".</p>
+        {% endif %}
+
+        <!-- USER RESULTS -->
+        {% if users %}
+        <h3 class="search-results-title" style="margin-top:32px">Users</h3>
+        <div class="users-list">
+            {% for user in users %}
+            <a href="/profile/{{ user.username }}" class="user-result-item">
+                <div class="user-result-avatar">{{ user.username[0] | upper }}</div>
+                <div>
+                    <p class="user-result-name">{{ user.username }}</p>
+                    <p class="user-result-loc">&#128205; {{ user.location }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% endif %}
+    </div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal()"></div>
+<div class="modal-sheet" id="modalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-content">
+        <div class="modal-carousel" id="modalCarousel">
+            <div class="carousel-track" id="carouselTrack"></div>
+            <button class="carousel-btn carousel-prev" id="carouselPrev" onclick="slideCarousel(-1)">&#8249;</button>
+            <button class="carousel-btn carousel-next" id="carouselNext" onclick="slideCarousel(1)">&#8250;</button>
+            <div class="carousel-dots" id="carouselDots"></div>
+        </div>
+        <div class="modal-info">
+            <div class="modal-top">
+                <span class="modal-badge" id="modalBadge"></span>
+                <button class="modal-close" onclick="closeModal()">&#10005;</button>
+            </div>
+            <h2 class="modal-title" id="modalTitle"></h2>
+            <div class="modal-meta">
+                <div class="meta-row"><span class="meta-label">&#128205; Location</span><span id="modalLocation"></span></div>
+                <div class="meta-row"><span class="meta-label">&#128065; Details</span><span id="modalDetails"></span></div>
+            </div>
+            <div class="modal-reporter">
+                <div class="reporter-avatar" id="reporterAvatar"></div>
+                <div>
+                    <p class="reporter-label">Reported by</p>
+                    <p class="reporter-name" id="reporterName"></p>
+                </div>
+            </div>
+            <div class="modal-actions" id="modalActions"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Autocomplete
+const searchInput = document.getElementById('searchInput');
+const suggestions = document.getElementById('searchSuggestions');
+let debounce;
+
+searchInput.addEventListener('input', function() {
+    clearTimeout(debounce);
+    const q = this.value.trim();
+    if (q.length < 2) { suggestions.style.display = 'none'; return; }
+    debounce = setTimeout(() => {
+        fetch('/search/suggest?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.length) { suggestions.style.display = 'none'; return; }
+            suggestions.innerHTML = data.map(s =>
+                `<div class="suggestion-item" onclick="selectSuggestion('${s}')">${s}</div>`
+            ).join('');
+            suggestions.style.display = 'block';
+        });
+    }, 200);
+});
+
+function selectSuggestion(val) {
+    searchInput.value = val;
+    suggestions.style.display = 'none';
+    searchInput.closest('form').submit();
+}
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.search-input-wrap')) suggestions.style.display = 'none';
+});
+
+// Modal (same as home)
+let currentSlide = 0, totalSlides = 0;
+function openModal(card) {
+    const id=card.dataset.id, type=card.dataset.type, itemType=card.dataset.itemType;
+    const details=card.dataset.details, location=card.dataset.location;
+    const reporter=card.dataset.reporter, isOwner=card.dataset.owner==='true';
+    let photos=[]; try{photos=JSON.parse(card.dataset.photos);}catch(e){}
+    document.getElementById('modalBadge').textContent=type.charAt(0).toUpperCase()+type.slice(1);
+    document.getElementById('modalBadge').className='modal-badge badge-'+type;
+    document.getElementById('modalTitle').textContent=itemType;
+    document.getElementById('modalLocation').textContent=location;
+    document.getElementById('modalDetails').textContent=details;
+    document.getElementById('reporterName').textContent=reporter;
+    document.getElementById('reporterAvatar').textContent=reporter.charAt(0).toUpperCase();
+    buildCarousel(photos);
+    const actions=document.getElementById('modalActions');
+    actions.innerHTML=`<a href="/chat/${type}/${id}" class="btn-contact" style="flex:1;display:block;text-align:center">&#128172; Contact Reporter</a>`;
+    document.getElementById('modalBackdrop').classList.add('active');
+    document.getElementById('modalSheet').classList.add('active');
+    document.body.style.overflow='hidden';
+}
+function buildCarousel(photos){
+    const track=document.getElementById('carouselTrack'),dots=document.getElementById('carouselDots');
+    const prev=document.getElementById('carouselPrev'),next=document.getElementById('carouselNext');
+    currentSlide=0;totalSlides=photos.length;
+    if(!photos.length){track.innerHTML='<div class="carousel-slide modal-no-img">No Photo</div>';dots.innerHTML='';prev.style.display='none';next.style.display='none';return;}
+    track.innerHTML=photos.map(p=>`<div class="carousel-slide"><img src="/static/uploads/${p}" alt="photo"></div>`).join('');
+    dots.innerHTML=photos.map((_,i)=>`<span class="carousel-dot ${i===0?'dot-active':''}" onclick="goToSlide(${i})"></span>`).join('');
+    prev.style.display=photos.length>1?'flex':'none';next.style.display=photos.length>1?'flex':'none';
+    updateCarousel();
+}
+function updateCarousel(){document.getElementById('carouselTrack').style.transform=`translateX(-${currentSlide*100}%)`;document.querySelectorAll('.carousel-dot').forEach((d,i)=>d.classList.toggle('dot-active',i===currentSlide));}
+function slideCarousel(dir){currentSlide=(currentSlide+dir+totalSlides)%totalSlides;updateCarousel();}
+function goToSlide(i){currentSlide=i;updateCarousel();}
+function closeModal(){document.getElementById('modalBackdrop').classList.remove('active');document.getElementById('modalSheet').classList.remove('active');document.body.style.overflow='';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(e.key==='ArrowLeft')slideCarousel(-1);if(e.key==='ArrowRight')slideCarousel(1);});
+</script>
+
+</body>
+</html>

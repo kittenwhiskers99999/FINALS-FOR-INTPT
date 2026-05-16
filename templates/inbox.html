@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind
+    </a>
+    <nav class="nav-links">
+        <a href="/lost" class="tab">Lost Items</a>
+        <a href="/found" class="tab">Found Items</a>
+        <a href="/inbox" class="tab active">Inbox</a>
+        <a href="/about" class="tab">About</a>
+    </nav>
+    <!-- SEARCH -->
+    <div class="nav-search">
+        <form action="/search" method="get" autocomplete="off" class="nav-search-form">
+            <div class="nav-search-wrap">
+                <input type="text" name="q" id="navSearchInput" placeholder="Search items..."
+                       class="nav-search-input">
+                <button type="submit" class="nav-search-btn">&#128269;</button>
+                <div class="search-suggestions" id="navSearchSuggestions"></div>
+            </div>
+        </form>
+    </div>
+    <!-- SEARCH -->
+    <div class="nav-search">
+        <form action="/search" method="get" autocomplete="off" class="nav-search-form">
+            <div class="nav-search-wrap">
+                <input type="text" name="q" id="navSearchInput" placeholder="Search items..."
+                       class="nav-search-input">
+                <button type="submit" class="nav-search-btn">&#128269;</button>
+                <div class="search-suggestions" id="navSearchSuggestions"></div>
+            </div>
+        </form>
+    </div>
+    <div class="auth">
+        {% if session.get('username') %}
+            <a href="/profile" class="tab">Profile</a>
+            <a href="/logout" class="tab login">Logout</a>
+        {% else %}
+            <a href="/login" class="tab login">Login</a>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container">
+    <div class="inbox-wrapper">
+
+        <div class="inbox-header">
+            <h1>Inbox</h1>
+            <p>All your conversations across your reports.</p>
+        </div>
+
+        {% if threads %}
+        <div class="inbox-list">
+            {% for thread in threads %}
+            <a href="{{ url_for('chat', item_type=thread.item_type, item_id=thread.item_id) }}?with={{ thread.other_user.id }}"
+               class="inbox-item {% if thread.unread_count > 0 %}inbox-unread{% endif %}">
+
+                <!-- Item thumbnail -->
+                <div class="inbox-thumb">
+                    {% if thread.item.image %}
+                    <img src="{{ url_for('static', filename='uploads/' + thread.item.image) }}" alt="{{ thread.item.type }}">
+                    {% else %}
+                    <div class="inbox-thumb-placeholder">?</div>
+                    {% endif %}
+                    <span class="inbox-badge {% if thread.item_type == 'lost' %}badge-lost{% else %}badge-found{% endif %}">
+                        {{ thread.item_type | capitalize }}
+                    </span>
+                </div>
+
+                <!-- Thread info -->
+                <div class="inbox-info">
+                    <div class="inbox-top">
+                        <span class="inbox-name">{{ thread.other_user.username }}</span>
+                        <span class="inbox-time">{{ thread.last_message_time.strftime('%b %d') }}</span>
+                    </div>
+                    <div class="inbox-bottom">
+                        <span class="inbox-item-type">{{ thread.item.type }}</span>
+                        <span class="inbox-preview">{{ thread.last_message[:50] }}{% if thread.last_message|length > 50 %}...{% endif %}</span>
+                    </div>
+                </div>
+
+                <!-- Unread badge -->
+                {% if thread.unread_count > 0 %}
+                <div class="inbox-unread-dot">{{ thread.unread_count }}</div>
+                {% endif %}
+
+            </a>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="inbox-empty">
+            <p>&#128172; No conversations yet.</p>
+            <small>When someone contacts you about your report, it will appear here.</small>
+        </div>
+        {% endif %}
+
+    </div>
+</main>
+
+
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="admin-modal-backdrop" id="adminModalBackdrop" onclick="closeAdminModal()"></div>
+<div class="admin-modal" id="adminModal">
+    <div class="admin-modal-header">
+        <h3>Admin Login</h3>
+        <button onclick="closeAdminModal()" class="admin-modal-close">&#10005;</button>
+    </div>
+    <div id="adminModalMsg"></div>
+    <input type="text" id="adminUser" placeholder="Admin username" class="admin-modal-input">
+    <input type="password" id="adminPass" placeholder="Password" class="admin-modal-input">
+    <button onclick="submitAdminLogin()" class="admin-modal-btn">Login</button>
+</div>
+
+<script>
+document.querySelector('.logo').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('adminModalBackdrop').classList.add('active');
+    document.getElementById('adminModal').classList.add('active');
+    document.getElementById('adminUser').focus();
+});
+
+function closeAdminModal() {
+    document.getElementById('adminModalBackdrop').classList.remove('active');
+    document.getElementById('adminModal').classList.remove('active');
+    document.getElementById('adminModalMsg').innerHTML = '';
+    document.getElementById('adminUser').value = '';
+    document.getElementById('adminPass').value = '';
+}
+
+function submitAdminLogin() {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value.trim();
+    const msg = document.getElementById('adminModalMsg');
+
+    if (!username || !password) {
+        msg.innerHTML = '<p class="admin-modal-error">Please enter both fields.</p>';
+        return;
+    }
+
+    const btn = document.querySelector('.admin-modal-btn');
+    btn.textContent = 'Logging in...';
+    btn.disabled = true;
+
+    fetch('/admin/login-ajax', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/admin';
+        } else {
+            msg.innerHTML = '<p class="admin-modal-error">' + data.message + '</p>';
+            btn.textContent = 'Login';
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        msg.innerHTML = '<p class="admin-modal-error">Something went wrong.</p>';
+        btn.textContent = 'Login';
+        btn.disabled = false;
+    });
+}
+
+// Submit on Enter key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('adminModal').classList.contains('active')) {
+        submitAdminLogin();
+    }
+});
+</script>
+
+</body>
+</html>

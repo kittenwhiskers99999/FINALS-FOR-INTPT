@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics – SpotIfind Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="navbar">
+    <a href="/admin" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind Admin
+    </a>
+    <nav class="nav-links">
+        <a href="/admin" class="tab">Dashboard</a>
+        <a href="/admin/analytics" class="tab active">Analytics</a>
+        <a href="/admin/reports" class="tab">Reports</a>
+    </nav>
+    <div class="auth">
+        <a href="/admin/logout" class="tab login">Logout</a>
+    </div>
+</header>
+
+<main class="container">
+
+    <div class="analytics-header">
+        <h1>Analytics Dashboard</h1>
+        <p>Platform performance overview</p>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="analytics-stats">
+        <div class="analytics-stat-card accent-blue">
+            <span class="analytics-stat-num">{{ recovery_rate }}%</span>
+            <span class="analytics-stat-label">Recovery Rate</span>
+            <span class="analytics-stat-sub">Items successfully claimed</span>
+        </div>
+        <div class="analytics-stat-card accent-green">
+            <span class="analytics-stat-num">{{ total_items }}</span>
+            <span class="analytics-stat-label">Total Reports</span>
+            <span class="analytics-stat-sub">Lost + Found combined</span>
+        </div>
+        <div class="analytics-stat-card accent-purple">
+            <span class="analytics-stat-num">{{ total_users }}</span>
+            <span class="analytics-stat-label">Registered Users</span>
+            <span class="analytics-stat-sub">All time</span>
+        </div>
+        <div class="analytics-stat-card accent-orange">
+            <span class="analytics-stat-num">{{ avg_claim_hours }}h</span>
+            <span class="analytics-stat-label">Avg Claim Time</span>
+            <span class="analytics-stat-sub">From report to claimed</span>
+        </div>
+    </div>
+
+    <!-- ROW 1: Line chart + Donut -->
+    <div class="analytics-row">
+        <div class="analytics-card analytics-card-wide">
+            <h3 class="chart-title">Lost vs Found — Weekly Activity</h3>
+            <canvas id="weeklyChart" height="100"></canvas>
+        </div>
+        <div class="analytics-card">
+            <h3 class="chart-title">Status Breakdown</h3>
+            <canvas id="donutChart" height="200"></canvas>
+            <div class="donut-legend">
+                <span class="legend-dot" style="background:#2563eb"></span> Active
+                <span class="legend-dot" style="background:#16a34a"></span> Claimed
+                <span class="legend-dot" style="background:#dc2626"></span> Deleted
+            </div>
+        </div>
+    </div>
+
+    <!-- ROW 2: Top types + Top locations -->
+    <div class="analytics-row">
+        <div class="analytics-card">
+            <h3 class="chart-title">Top Item Types</h3>
+            <canvas id="typesChart" height="200"></canvas>
+        </div>
+        <div class="analytics-card">
+            <h3 class="chart-title">Top Locations</h3>
+            <canvas id="locsChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- ROW 3: User growth + Top users -->
+    <div class="analytics-row">
+        <div class="analytics-card analytics-card-wide">
+            <h3 class="chart-title">User Growth — Monthly</h3>
+            <canvas id="growthChart" height="100"></canvas>
+        </div>
+        <div class="analytics-card">
+            <h3 class="chart-title">Most Active Users</h3>
+            <table class="top-users-table">
+                <thead>
+                    <tr><th>User</th><th>Lost</th><th>Found</th><th>Total</th></tr>
+                </thead>
+                <tbody>
+                {% for u in top_users %}
+                <tr>
+                    <td><a href="/profile/{{ u.username }}" class="admin-user-link">{{ u.username }}</a></td>
+                    <td>{{ u.lost_count }}</td>
+                    <td>{{ u.found_count }}</td>
+                    <td><strong>{{ u.lost_count + u.found_count }}</strong></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<script id="chartData" type="application/json">
+{
+    "weeklyLabels":  {{ weekly_labels  | tojson }},
+    "weeklyLost":    {{ weekly_lost    | tojson }},
+    "weeklyFound":   {{ weekly_found   | tojson }},
+    "donutData":     {{ donut_data     | tojson }},
+    "typeLabels":    {{ type_labels    | tojson }},
+    "typeCounts":    {{ type_counts    | tojson }},
+    "locLabels":     {{ loc_labels     | tojson }},
+    "locCounts":     {{ loc_counts     | tojson }},
+    "growthLabels":  {{ growth_labels  | tojson }},
+    "growthCounts":  {{ growth_counts  | tojson }}
+}
+</script>
+
+<script>
+const d = JSON.parse(document.getElementById('chartData').textContent);
+const BLUE   = '#2563eb';
+const GREEN  = '#16a34a';
+const RED    = '#dc2626';
+const PURPLE = '#7c3aed';
+
+new Chart(document.getElementById('weeklyChart'), {
+    type: 'line',
+    data: {
+        labels: d.weeklyLabels,
+        datasets: [
+            {
+                label: 'Lost',
+                data: d.weeklyLost,
+                borderColor: RED,
+                backgroundColor: 'rgba(220,38,38,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4
+            },
+            {
+                label: 'Found',
+                data: d.weeklyFound,
+                borderColor: GREEN,
+                backgroundColor: 'rgba(22,163,74,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+
+new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Active', 'Claimed', 'Deleted'],
+        datasets: [{ data: d.donutData, backgroundColor: [BLUE, GREEN, RED], borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('typesChart'), {
+    type: 'bar',
+    data: {
+        labels: d.typeLabels,
+        datasets: [{ label: 'Reports', data: d.typeCounts, backgroundColor: BLUE, borderRadius: 6 }]
+    },
+    options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+
+new Chart(document.getElementById('locsChart'), {
+    type: 'bar',
+    data: {
+        labels: d.locLabels,
+        datasets: [{ label: 'Reports', data: d.locCounts, backgroundColor: PURPLE, borderRadius: 6 }]
+    },
+    options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+
+new Chart(document.getElementById('growthChart'), {
+    type: 'line',
+    data: {
+        labels: d.growthLabels,
+        datasets: [{
+            label: 'New Users',
+            data: d.growthCounts,
+            borderColor: PURPLE,
+            backgroundColor: 'rgba(124,58,237,0.08)',
+            tension: 0.4, fill: true, pointRadius: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports – SpotIfind Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="/admin" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind Admin
+    </a>
+    <nav class="nav-links">
+        <a href="/admin" class="tab">Dashboard</a>
+        <a href="/admin/reports" class="tab active">Reports</a>
+    </nav>
+    <div class="auth">
+        <a href="/admin/logout" class="tab login">Logout</a>
+    </div>
+</header>
+
+<main class="container">
+    <div class="report-header" style="margin-bottom:24px">
+        <h1>User Reports</h1>
+        <p>Flagged posts submitted by users.</p>
+    </div>
+
+    {% if reports %}
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Reported By</th>
+                    <th>Item Type</th>
+                    <th>Item ID</th>
+                    <th>Reason</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in reports %}
+            <tr>
+                <td><a href="/profile/{{ r.reporter_name }}" class="admin-user-link">{{ r.reporter_name or 'Unknown' }}</a></td>
+                <td><span class="status-badge status-{{ r.item_type }}">{{ r.item_type }}</span></td>
+                <td>#{{ r.item_id }}</td>
+                <td><strong>{{ r.reason }}</strong></td>
+                <td class="td-details">{{ r.details or '—' }}</td>
+                <td><span class="status-badge status-{{ r.status }}">{{ r.status }}</span></td>
+                <td class="td-date">{{ r.created_at.strftime('%b %d, %Y') }}</td>
+                <td class="td-actions">
+                    {% if r.status == 'pending' %}
+                    <form method="post" action="/admin/reports/{{ r.id }}/reviewed" style="display:inline">
+                        <button class="admin-btn btn-restore">Mark Reviewed</button>
+                    </form>
+                    <form method="post" action="/admin/reports/{{ r.id }}/dismissed" style="display:inline">
+                        <button class="admin-btn btn-del">Dismiss</button>
+                    </form>
+                    {% else %}
+                    <span style="color:#9ca3af;font-size:12px">{{ r.status }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-msg">No reports submitted yet.</p>
+    {% endif %}
+</main>
+
+</body>
+</html>

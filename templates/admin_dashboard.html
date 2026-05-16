@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard – SpotIfind</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+
+<header class="navbar">
+    <a href="/admin" class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="logo">
+        SpotIfind Admin
+    </a>
+    <nav class="nav-links">
+        <a href="#lost" class="tab admin-tab active" onclick="showTab('lost', this)">Lost Items</a>
+        <a href="#found" class="tab admin-tab" onclick="showTab('found', this)">Found Items</a>
+        <a href="#users" class="tab admin-tab" onclick="showTab('users', this)">Users</a>
+        <a href="/admin/reports" class="tab">Reports</a>
+        <a href="/admin/analytics" class="tab">Analytics</a>
+    </nav>
+    <div class="auth">
+        <a href="/admin/logout" class="tab login">Logout</a>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- STATS -->
+    <div class="admin-stats">
+        <div class="stat-card">
+            <span class="stat-num">{{ stats.active_lost }}</span>
+            <span class="stat-label">Active Lost</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ stats.active_found }}</span>
+            <span class="stat-label">Active Found</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ stats.claimed }}</span>
+            <span class="stat-label">Claimed</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ stats.deleted }}</span>
+            <span class="stat-label">Removed</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-num">{{ stats.total_users }}</span>
+            <span class="stat-label">Total Users</span>
+        </div>
+    </div>
+
+    <!-- LOST ITEMS TAB -->
+    <section id="lost" class="admin-section active">
+        <h2 class="section-title">Lost Items <span class="section-sub">— all statuses</span></h2>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Details</th>
+                        <th>Reporter</th>
+                        <th>Status</th>
+                        <th>Reported</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in lost_items %}
+                <tr class="status-{{ item.status }}">
+                    <td>
+                        {% if item.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="admin-thumb">
+                        {% else %}<span class="no-img">—</span>{% endif %}
+                    </td>
+                    <td><strong>{{ item.type }}</strong></td>
+                    <td>{{ item.location }}</td>
+                    <td class="td-details">{{ item.details }}</td>
+                    <td><a href="/profile/{{ item.reporter_name }}" class="admin-user-link">{{ item.reporter_name }}</a></td>
+                    <td><span class="status-badge status-{{ item.status }}">{{ item.status }}</span></td>
+                    <td class="td-date">{{ item.reported_at.strftime('%b %d, %Y') }}</td>
+                    <td class="td-actions">
+                        {% if item.status != 'deleted' %}
+                        <form method="post" action="/admin/delete/lost_items/{{ item.id }}" style="display:inline">
+                            <button class="admin-btn btn-del">Remove</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/admin/restore/lost_items/{{ item.id }}" style="display:inline">
+                            <button class="admin-btn btn-restore">Restore</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- FOUND ITEMS TAB -->
+    <section id="found" class="admin-section">
+        <h2 class="section-title">Found Items <span class="section-sub">— all statuses</span></h2>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Details</th>
+                        <th>Reporter</th>
+                        <th>Status</th>
+                        <th>Reported</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in found_items %}
+                <tr class="status-{{ item.status }}">
+                    <td>
+                        {% if item.image %}
+                        <img src="{{ url_for('static', filename='uploads/' + item.image) }}" class="admin-thumb">
+                        {% else %}<span class="no-img">—</span>{% endif %}
+                    </td>
+                    <td><strong>{{ item.type }}</strong></td>
+                    <td>{{ item.location }}</td>
+                    <td class="td-details">{{ item.details }}</td>
+                    <td><a href="/profile/{{ item.reporter_name }}" class="admin-user-link">{{ item.reporter_name }}</a></td>
+                    <td><span class="status-badge status-{{ item.status }}">{{ item.status }}</span></td>
+                    <td class="td-date">{{ item.reported_at.strftime('%b %d, %Y') }}</td>
+                    <td class="td-actions">
+                        {% if item.status != 'deleted' %}
+                        <form method="post" action="/admin/delete/found_items/{{ item.id }}" style="display:inline">
+                            <button class="admin-btn btn-del">Remove</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="/admin/restore/found_items/{{ item.id }}" style="display:inline">
+                            <button class="admin-btn btn-restore">Restore</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- USERS TAB -->
+    <section id="users" class="admin-section">
+        <h2 class="section-title">Registered Users</h2>
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Location</th>
+                        <th>Joined</th>
+                        <th>Profile</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.contact_number }}</td>
+                    <td>{{ user.location }}</td>
+                    <td class="td-date">{{ user.created_at.strftime('%b %d, %Y') }}</td>
+                    <td><a href="/profile/{{ user.username }}" class="admin-user-link">View</a></td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<script>
+function showTab(tab, el) {
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tab).classList.add('active');
+    if (el) el.classList.add('active');
+}
+</script>
+
+</body>
+</html>
