@@ -1,0 +1,409 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;800&family=Space+Grotesk:wght@400;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0f4ff;
+    color: #1c1e21;
+    min-height: 100vh;
+}
+
+/* =========================
+   BACKGROUND VIDEO
+========================= */
+.bg-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+    opacity: 0.65;
+}
+
+/* =========================
+   VIDEO OVERLAY
+========================= */
+.video-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.35);
+    z-index: -1;
+}
+
+/* =========================
+   NAVBAR
+========================= */
+.navbar {
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 40px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(37,99,235,0.18);
+    height: 56px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    color: white;
+    text-decoration: none;
+}
+
+.logo img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 8px;
+}
+
+.tab {
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.tab:hover {
+    background: transparent;
+    text-decoration: underline;
+}
+
+.tab.active {
+    background: white;
+    color: #2563eb;
+}
+
+.auth {
+    display: flex;
+    gap: 8px;
+}
+
+.tab.login {
+    background: white;
+    color: #2563eb;
+}
+
+.tab.login:hover {
+    background: #e0eaff;
+}
+
+/* =========================
+   PAGE LAYOUT (login/register)
+========================= */
+.page {
+    min-height: calc(100vh - 56px);
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 0;
+    width: 100%;
+    padding: 0;
+    align-items: center;
+}
+
+/* HERO — left column */
+.hero {
+    padding: 60px;
+}
+
+.logo-name {
+    font-size: 60px;
+    font-weight: 900;
+    line-height: 1;
+    color: #1e3a8a;
+    text-shadow: 0 2px 16px rgba(255,255,255,0.7);
+}
+
+.logo-tagline {
+    margin-top: 16px;
+    font-size: 18px;
+    color: #1e3a8a;
+    max-width: 480px;
+    line-height: 1.6;
+    background: rgba(255,255,255,0.6);
+    display: inline-block;
+    padding: 10px 16px;
+    border-radius: 10px;
+    backdrop-filter: blur(4px);
+}
+
+/* PANEL — right column */
+.panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 40px;
+    background: #fafafa;
+    min-height: calc(100vh - 56px);
+}
+
+/* Instagram-style card */
+.card {
+    width: 100%;
+    max-width: 350px;
+    background: white;
+    border: 1px solid #dbdbdb;
+    border-radius: 3px;
+    padding: 40px 40px 24px;
+    box-shadow: none;
+}
+
+.card h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    color: #1c1e21;
+    margin-bottom: 20px;
+    letter-spacing: -0.5px;
+}
+
+/* =========================
+   FORM ELEMENTS
+========================= */
+label {
+    display: none;
+}
+
+input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border-radius: 3px;
+    border: 1px solid #dbdbdb;
+    background: #fafafa;
+    font-size: 13px;
+    font-family: inherit;
+    color: #1c1e21;
+    transition: border-color 0.2s;
+}
+
+input::placeholder {
+    color: #aaa;
+    font-size: 13px;
+}
+
+input:focus {
+    outline: none;
+    border-color: #a8a8a8;
+    background: white;
+}
+
+button {
+    width: 100%;
+    padding: 8px 14px;
+    margin-top: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s;
+    letter-spacing: 0.3px;
+}
+
+button:hover {
+    opacity: 0.85;
+    background: #2563eb;
+}
+
+.error {
+    color: #dc2626;
+    font-size: 12px;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.small-text {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid #dbdbdb;
+}
+
+.small-text a {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.card-welcome {
+    font-size: 14px;
+    color: #6b7280;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 860px) {
+    .navbar {
+        padding: 14px 20px;
+        height: auto;
+    }
+
+    .page {
+        grid-template-columns: 1fr;
+        min-height: unset;
+    }
+
+    .panel {
+        min-height: unset;
+        padding: 40px 24px;
+    }
+
+    .hero {
+        padding: 40px 24px;
+    }
+
+    .logo-name {
+        font-size: 40px;
+    }
+
+    .nav-links {
+        gap: 4px;
+    }
+}
+
+/* =========================
+   ADMIN LOGIN MODAL
+========================= */
+.admin-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 3000;
+}
+
+.admin-modal-backdrop.active { display: block; }
+
+.admin-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+    background: white;
+    border-radius: 14px;
+    padding: 28px;
+    width: 320px;
+    z-index: 3001;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.admin-modal.active {
+    display: block;
+    transform: translate(-50%, -50%);
+    opacity: 1;
+}
+
+.admin-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.admin-modal-header h3 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e3a8a;
+}
+
+.admin-modal-close {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #f3f4f6;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0;
+    margin: 0;
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-modal-close:hover { background: #e5e7eb; }
+
+.admin-modal-input {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fafafa;
+    display: block;
+}
+
+.admin-modal-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: white;
+}
+
+.admin-modal-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 16px;
+    border-radius: 8px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.admin-modal-btn:hover { background: #1d4ed8; }
+
+.admin-modal-error {
+    color: #dc2626;
+    font-size: 12px;
+    background: #fef2f2;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+    text-align: center;
+}
